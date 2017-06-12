@@ -4,9 +4,9 @@ const model = {
   isFetching: false,
 }
 
-const query = {
+const query = githubHandle => ({
   query: `query {
-    user(login:\"${model.githubHandle}\") {
+    user(login:\"${githubHandle}\") {
       avatarUrl,
       allRepos: repositories(last:100) {
         totalCount,
@@ -15,7 +15,7 @@ const query = {
           stargazers { totalCount }
         }
       }
-      lastRepo: repositories(last:1) {
+      topRepos: repositories(last:5) {
         nodes {
           name,
           url,
@@ -26,10 +26,10 @@ const query = {
         } },
     },
   }`
-}
+})
 
 // actions!
-const fetchData = (username) => ({
+const fetchData = () => ({
   type: 'fetchData',
 })
 
@@ -54,7 +54,8 @@ const view = (signal, model, root) => {
   empty(root);
   [
     userData(model),
-    repoList(model),
+    repoList(model.data.topRepos),
+    input(model.githubHandle),
   ].forEach(el => { root.appendChild(el) })
 }
 
@@ -73,7 +74,7 @@ const mount = (model, view, root_element_id) => {
     const ghEndpoint = "https://api.github.com/graphql"
 
     signal(fetchData)()
-    post(ghEndpoint, query, ({ errors, data, }) => {
+    post(ghEndpoint, query(model.githubHandle), ({ errors, data, }) => {
       if (errors) return errors.forEach(e => { console.log(e.message) })
       signal(receiveData)(success_userDetails(data))
     })
@@ -93,19 +94,21 @@ const countStars = repoNodes => repoNodes
 const getContributors = userNodes => userNodes
   .map(({ login, }) => login)
 
+const repoDetails = repo => ({
+  name: repo.name,
+  url: repo.url,
+  createdAt: repo.createdAt,
+  issues: repo.issues.totalCount,
+  watchers: repo.watchers.totalCount,
+  contributors: getContributors(repo.mentionableUsers.nodes),
+})
+
 const success_userDetails = ({ user, }) => ({
-  githubHandle: model.githubHandle,
-  link: "https://github.com/" + model.githubHandle,
   avatar: user.avatarUrl,
   repos: user.allRepos.totalCount,
   languages: getLanguages(user.allRepos.nodes),
   stars: countStars(user.allRepos.nodes),
-  firstRepoName: user.lastRepo.nodes[0].name,
-  firstRepoUrl: user.lastRepo.nodes[0].url,
-  firstRepoCreated: user.lastRepo.nodes[0].createdAt,
-  firstRepoIssues: user.lastRepo.nodes[0].issues.totalCount,
-  firstRepoWatchers: user.lastRepo.nodes[0].watchers.totalCount,
-  firstRepoContributors: getContributors(user.lastRepo.nodes[0].mentionableUsers.nodes),
+  topRepos: user.topRepos.nodes.map(repoDetails),
 });
 
 /* generic request function, can be recycled over and over! */
@@ -137,15 +140,86 @@ const empty = node => {
 
 // components
 
-const userData = model => {
-  const container = document.createElement('p')
-  container.textContent = model.data.githubHandle
+const userData = ({ githubHandle, data, }) => {
+  const container = document.createElement('div')
+  container.id = "user-details"
+  const avatar = document.createElement('img')
+  if (data.avatar) {
+    avatar.src = data.avatar
+  }
+
+  const handle = document.createElement('h1')
+  const link = document.createElement('a')
+  link.href = "https://github.com/" + githubHandle
+  link.textContent = githubHandle
+  link.target = "_blank"
+  handle.appendChild(link)
+
+  const list = document.createElement('ul');
+
+  if (data.repos) {
+    [ "repos", "languages", "stars", ].forEach(prop => {
+      const value = data[prop]
+      const item = document.createElement('li')
+      item.textContent = `${prop}: ${value}`
+      list.appendChild(item)
+    })
+  }
+
+  container.appendChild(handle)
+  container.appendChild(avatar)
+  container.appendChild(list)
   return container
 }
 
-const repoList = ({ data, }) => {
+const repoDetail = (title, data) => {
+  const detail = document.createElement('p')
+  detail.classList.add('repo-detail')
+  detail.textContent = `${title}: ${data}`
+  return detail
+}
+
+const repoList = (repos) => {
+  const container = document.createElement('ul')
+  if (repos) {
+    repos.forEach(repo => {
+      const item = document.createElement('li')
+      item.classList.add("repo")
+
+      const box = document.createElement('div')
+      box.classList.add("repo-inner")
+
+      const title = document.createElement('h2')
+      title.textContent = repo.name
+      box.appendChild(title)
+      item.appendChild(box)
+      container.appendChild(item)
+
+      const date = repoDetail('date', repo.createdAt.slice(1, 10))
+      box.appendChild(date)
+
+      const issues = repoDetail('Open issues', repo.issues)
+      box.appendChild(issues)
+
+      const watchers = repoDetail('Watchers', repo.watchers)
+      box.appendChild(watchers)
+
+      const contributors = repoDetail('Contributors', repo.contributors.join(', '))
+      box.appendChild(contributors)
+    })
+  }
+  return container;
+}
+
+const input = githubHandle => {
   const container = document.createElement('div')
-  container.textContent = data.firstRepoName
+  container.id = 'input-container'
+
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.value = githubHandle
+  container.appendChild(input)
+
   return container
 }
 

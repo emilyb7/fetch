@@ -13,3 +13,36 @@ img {
 a, a:hover, a:active, a:visited {
   color: #555;
 }
+
+h2 { margin: 0; }
+
+p { margin: 0; }
+
+ul { padding: 0; }
+
+#user-details {
+  text-align: center;
+}
+
+#user-details li {
+  font-size: 1.2rem;
+}
+
+.repo {
+  list-style: none;
+  margin: 0;
+  padding: 1rem;
+}
+
+.repo-inner {
+  background-color: #fff;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border-left: 0.5rem solid hotpink;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.repo-inner:hover {
+  opacity: 1;
+}
