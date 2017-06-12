@@ -1,4 +1,83 @@
-const githubHandle = "emilyb7";
+const model = {
+  githubHandle: "emilyb7",
+  data: {},
+  isFetching: false,
+}
+
+const query = {
+  query: `query {
+    user(login:\"${model.githubHandle}\") {
+      avatarUrl,
+      allRepos: repositories(last:100) {
+        totalCount,
+        nodes {
+          languages(first:10) { nodes { name }}
+          stargazers { totalCount }
+        }
+      }
+      lastRepo: repositories(last:1) {
+        nodes {
+          name,
+          url,
+          createdAt,
+          issues(states:OPEN) { totalCount },
+          watchers { totalCount },
+          mentionableUsers(last:100) { nodes { login, }}
+        } },
+    },
+  }`
+}
+
+// actions!
+const fetchData = (username) => ({
+  type: 'fetchData',
+})
+
+const receiveData = (data) => ({
+  type: 'receiveData',
+  data: data,
+})
+
+const update = (model, action) => {
+  switch(action.type) {
+    case 'fetchData':
+      return Object.assign({}, model, { isFetching: true, } )
+    case 'receiveData':
+      return Object.assign({}, model, { data: action.data, isFetching: false, })
+    default:
+      return model
+  }
+}
+
+// view
+const view = (signal, model, root) => {
+  empty(root);
+  [
+    userData(model),
+    repoList(model),
+  ].forEach(el => { root.appendChild(el) })
+}
+
+// mount
+const mount = (model, view, root_element_id) => {
+
+  const root = document.getElementById(root_element_id)
+  const signal = action =>
+    event => {
+      model = update(model, action(event))
+      view(signal, model, root)
+    }
+
+    view(signal, model, root)
+
+    const ghEndpoint = "https://api.github.com/graphql"
+
+    signal(fetchData)()
+    post(ghEndpoint, query, ({ errors, data, }) => {
+      if (errors) return errors.forEach(e => { console.log(e.message) })
+      signal(receiveData)(success_userDetails(data))
+    })
+}
 
 /* helper functions */
 
@@ -15,8 +94,8 @@ const getContributors = userNodes => userNodes
   .map(({ login, }) => login)
 
 const success_userDetails = ({ user, }) => ({
-  githubHandle: githubHandle,
-  link: "https://github.com/" + githubHandle,
+  githubHandle: model.githubHandle,
+  link: "https://github.com/" + model.githubHandle,
   avatar: user.avatarUrl,
   repos: user.allRepos.totalCount,
   languages: getLanguages(user.allRepos.nodes),
@@ -50,51 +129,24 @@ const post = (url, query, cb) => {
   })
 }
 
-const updateDOM = obj => {
-  document.getElementById("github-user-handle").textContent = githubHandle;
-  document.getElementById("github-user-link").href = "https://github.com/" + githubHandle;
-  document.getElementById("github-user-avatar").src = obj.avatar;
-  document.getElementById("github-user-repos").textContent = obj.repos;
-  document.getElementById("github-repos-languages").textContent = obj.languages.join(", ");
-  document.getElementById("github-repos-stars").textContent = obj.stars;
-  document.getElementById("github-repo-name").textContent = obj.name;
-  document.getElementById("github-repo-link").href = obj.url;
-  document.getElementById("github-repo-created").textContent = obj.firstRepoCreated;
-  document.getElementById("github-repo-open-issues").textContent = obj.firstRepoIssues;
-  document.getElementById("github-repo-watchers").textContent = obj.firstRepoWatchers;
-  document.getElementById("github-repo-contributors").textContent = obj.firstRepoContributors.join(", ");
-}
-
-const query = {
-  query: `query {
-    user(login:\"${githubHandle}\") {
-      avatarUrl,
-      allRepos: repositories(last:100) {
-        totalCount,
-        nodes {
-          languages(first:10) { nodes { name }}
-          stargazers { totalCount }
-        }
-      }
-      lastRepo: repositories(last:1) {
-        nodes {
-          name,
-          url,
-          createdAt,
-          issues(states:OPEN) { totalCount },
-          watchers { totalCount },
-          mentionableUsers(last:100) { nodes { login, }}
-        } },
-    },
-  }`
-}
-
-post("https://api.github.com/graphql", query, ({ errors, data, }) => {
-  if (errors) {
-    errors.forEach(e => { console.log(e.message) })
-    return
+const empty = node => {
+  while (node.firstChild) {
+    node.removeChild(node.firstChild)
   }
-  const userDetails = success_userDetails(data)
-  console.log(userDetails);
-  updateDOM(userDetails)
-})
+}
+
+// components
+
+const userData = model => {
+  const container = document.createElement('p')
+  container.textContent = model.data.githubHandle
+  return container
+}
+
+const repoList = ({ data, }) => {
+  const container = document.createElement('div')
+  container.textContent = data.firstRepoName
+  return container
+}
+
+mount(model, view, "app")
