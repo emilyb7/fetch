@@ -3,6 +3,7 @@ body {
   color: #333;
   background-color: pink;
   font-family: monospace;
+  margin: 0;
 }
 
 img {
@@ -20,8 +21,16 @@ p { margin: 0; }
 
 ul { padding: 0; }
 
+li { list-style: none; }
+
+#app {
+  position: relative;
+  padding-bottom: 4rem;
+}
+
 #user-details {
   text-align: center;
+  padding: 1rem;
 }
 
 #user-details li {
@@ -29,7 +38,6 @@ ul { padding: 0; }
 }
 
 .repo {
-  list-style: none;
   margin: 0;
   padding: 1rem;
 }
@@ -45,4 +53,28 @@ ul { padding: 0; }
 
 .repo-inner:hover {
   opacity: 1;
+}
+
+#input-container {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background-color: RGBA(255,105,180, 0.8);
+  padding: 1rem;
+}
+
+input {
+  width: 24rem;
+  font-size: 1rem;
+  font-family: monospace;
+  padding: 0.5rem;
+}
+
+button {
+  font-size: 1rem;
+  font-family: inherit;
+  padding: 0.5rem;
+  width: 4rem;
+  margin-left: 1rem;
+  cursor: pointer;
 }

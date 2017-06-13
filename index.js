@@ -1,7 +1,9 @@
 const model = {
   githubHandle: "emilyb7",
+  input: 'emilyb7',
   data: {},
   isFetching: false,
+  err: null,
 }
 
 const query = githubHandle => ({
@@ -38,12 +40,48 @@ const receiveData = (data) => ({
   data: data,
 })
 
+const onInput = event => ({
+  type: 'onInput',
+  value: event.target.value,
+})
+
+const onSubmit = () => ({
+  type: 'onSubmit',
+})
+
+const notFound = () => ({
+  type: 'notFound',
+})
+
+// update
+
 const update = (model, action) => {
+  console.log({ model, action, });
   switch(action.type) {
     case 'fetchData':
       return Object.assign({}, model, { isFetching: true, } )
     case 'receiveData':
-      return Object.assign({}, model, { data: action.data, isFetching: false, })
+      return Object.assign({}, model, { data: action.data, isFetching: false, err: null, })
+    case 'onInput':
+      return Object.assign({}, model, { input: action.value, })
+    case 'onSubmit':
+      return Object.assign({}, model, {
+        input: '',
+        githubHandle: model.input,
+        isFetching: true,
+        data: model.data,
+      })
+    case 'notFound': {
+      console.log("notFound");
+        return Object.assign({}, model, {
+          githubHandle: '',
+          input: model.githubHandle,
+          data: {},
+          isFetching: false,
+          err: 'NOT_FOUND',
+        })
+    }
+
     default:
       return model
   }
@@ -51,33 +89,67 @@ const update = (model, action) => {
 
 // view
 const view = (signal, model, root) => {
+  console.log({model});
   empty(root);
-  [
-    userData(model),
-    repoList(model.data.topRepos),
-    input(model.githubHandle),
-  ].forEach(el => { root.appendChild(el) })
+
+  if (model.err === 'NOT_FOUND') {
+    console.log("user not found");
+    [
+      input(model, signal, { onInput, onSubmit, })
+    ].forEach(el => {
+      root.appendChild(el)
+    })
+  } else {
+    [
+      userData(model),
+      repoList(model.data.topRepos),
+      input(model, signal, { onInput, onSubmit, }),
+    ].forEach(el => {
+      root.appendChild(el)
+    })
+  }
+
+  document.getElementById('input').focus()
 }
 
 // mount
 const mount = (model, view, root_element_id) => {
+  const ghEndpoint = "https://api.github.com/graphql"
 
   const root = document.getElementById(root_element_id)
+
   const signal = action =>
     event => {
-      model = update(model, action(event))
-      view(signal, model, root)
+      const nextAction = action(event)
+      const nextState = update(model, nextAction)
+      if (nextAction.type === 'onSubmit') {
+        view(signal, nextState, root)
+        post(ghEndpoint, query(nextState.githubHandle), ({ errors, data, }) => {
+          console.log({ errors, data, });
+          if (errors) {
+            errors.forEach(e => { console.log({err: e, }) })
+            if (errors.find(({ type, }) => type === 'NOT_FOUND')) {
+              model = update(nextState, notFound())
+              view(signal, model, root)
+              return
+            }
+          }
+          model = update(nextState, receiveData(success_userDetails(data)))
+          view(signal, model, root)
+          return
+        })
+      }
+      model = nextState;
+      view(signal, nextState, root)
     }
-
-    view(signal, model, root)
-
-    const ghEndpoint = "https://api.github.com/graphql"
 
     signal(fetchData)()
     post(ghEndpoint, query(model.githubHandle), ({ errors, data, }) => {
       if (errors) return errors.forEach(e => { console.log(e.message) })
       signal(receiveData)(success_userDetails(data))
     })
+
+    view(signal, model, root)
 }
 
 /* helper functions */
@@ -87,9 +159,12 @@ const getLanguages = repoNodes => repoNodes
   .reduce((a, b) => a.concat(b), [])
   .reduce((a, { name, }) => a.concat(a.indexOf(name) > -1 ? [] : [ name, ]), [])
 
-const countStars = repoNodes => repoNodes
-  .map(({ stargazers, }) => stargazers.totalCount)
-  .reduce((a, b) => a + b);
+const countStars = repoNodes =>
+  !repoNodes.length
+    ? 0
+    : repoNodes
+      .map(({ stargazers, }) => stargazers.totalCount)
+      .reduce((a, b) => a + b)
 
 const getContributors = userNodes => userNodes
   .map(({ login, }) => login)
@@ -141,8 +216,10 @@ const empty = node => {
 // components
 
 const userData = ({ githubHandle, data, }) => {
+  console.log({ userData: data,});
   const container = document.createElement('div')
   container.id = "user-details"
+
   const avatar = document.createElement('img')
   if (data.avatar) {
     avatar.src = data.avatar
@@ -211,15 +288,22 @@ const repoList = (repos) => {
   return container;
 }
 
-const input = githubHandle => {
+const input = ({ input, }, signal, { onInput, onSubmit}) => {
   const container = document.createElement('div')
   container.id = 'input-container'
 
-  const input = document.createElement('input')
-  input.type = 'text'
-  input.value = githubHandle
-  container.appendChild(input)
+  const field = document.createElement('input')
+  field.type = 'text'
+  field.value = input
+  field.autofocus = true
+  field.id = 'input'
+  field.oninput = signal(onInput)
+  container.appendChild(field)
 
+  const btn = document.createElement('button')
+  btn.textContent = 'Go'
+  btn.onclick = signal(onSubmit)
+  container.appendChild(btn)
   return container
 }
 
