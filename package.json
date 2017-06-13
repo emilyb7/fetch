@@ -1,0 +1,27 @@
+{
+  "name": "fetch",
+  "version": "1.0.0",
+  "description": "Rewriting solution to https://github.com/emilyb7/workshop-APIs to use Fetch API / ES6 features (just for fun).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emilyb7/fetch.git"
+  },
+  "author": "@emilyb7",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/emilyb7/fetch/issues"
+  },
+  "homepage": "https://github.com/emilyb7/fetch#readme",
+  "dependencies": {
+    "browser-sync": "^2.18.12",
+    "gulp": "^3.9.1",
+    "gulp-if": "^2.0.2",
+    "gulp-uglify": "^3.0.0",
+    "gulp-useref": "^3.1.2",
+    "run-sequence": "^1.2.2"
+  }
+}
