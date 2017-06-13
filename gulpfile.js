@@ -1,20 +1,17 @@
 const gulp = require('gulp');
-const useref = require('gulp-useref');
-const uglify = require('gulp-uglify');
-const gulpIf = require('gulp-if');
 const runSequence = require('run-sequence');
+const concat = require('gulp-concat')
 const browserSync = require('browser-sync').create();
 
 gulp.task('sync', () => { browserSync.init({ server: { baseDir: '.', }, }); });
 
 gulp.task('bs-reload', () => { browserSync.reload(); });
 
-gulp.task('useref', () =>
-  gulp.src('./*.html')
-    .pipe(useref())
-    .pipe(gulpIf('./*.js', uglify()))
-    .pipe(gulp.dest('dist'))
-);
+gulp.task('scripts', () =>
+  gulp.src('./js/*.js')
+    .pipe(concat('main.js'))
+    .pipe(gulp.dest('.'))
+)
 
 gulp.task('watch', [ 'sync', ], () => {
   gulp.watch('./*', (file) => {
@@ -24,5 +21,5 @@ gulp.task('watch', [ 'sync', ], () => {
 });
 
 gulp.task('default', callback => {
-  runSequence([ 'useref', 'watch', ], callback);
+  runSequence([ 'scripts', 'watch', ], callback);
 });
